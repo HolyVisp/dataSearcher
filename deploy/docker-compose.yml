@@ -1,0 +1,76 @@
+version: '3.9'
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.13.0
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - plugins.security.disabled=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - data-search
+
+  ingestion-service:
+    build:
+      context: ..
+      dockerfile: backend/DataIngestionService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      OpenSearch__Uri: http://opensearch:9200
+      OpenSearch__IndexName: records
+      OpenSearch__DisableCertificateValidation: "true"
+    depends_on:
+      - opensearch
+    ports:
+      - "8080:8080"
+    networks:
+      - data-search
+
+  search-service:
+    build:
+      context: ..
+      dockerfile: backend/SearchService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8081
+      OpenSearch__Uri: http://opensearch:9200
+      OpenSearch__IndexName: records
+      OpenSearch__DisableCertificateValidation: "true"
+    depends_on:
+      - opensearch
+    ports:
+      - "8081:8081"
+    networks:
+      - data-search
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/search-ui/Dockerfile
+      args:
+        VITE_SEARCH_API_URL: http://search-service:8081
+        VITE_INGESTION_API_URL: http://ingestion-service:8080
+    depends_on:
+      - search-service
+      - ingestion-service
+    ports:
+      - "3000:80"
+    networks:
+      - data-search
+
+networks:
+  data-search:
+    driver: bridge
+
+volumes:
+  opensearch-data:
