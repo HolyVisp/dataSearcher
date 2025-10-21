@@ -1,0 +1,19 @@
+# .NET build
+bin/
+obj/
+**/bin/
+**/obj/
+
+# Node
+node_modules/
+frontend/search-ui/dist/
+frontend/search-ui/.vite/
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
+
+# Mac
+.DS_Store
